@@ -52,6 +52,7 @@
     const ctx = canvas.getContext('2d');
 
     let image = new Image();
+    let filename = 'gazou-magick.png';
 
     fileInput.addEventListener('change', (event) => {
       const file = event.target.files[0];
@@ -59,6 +60,10 @@
         const reader = new FileReader();
         reader.onload = (e) => {
           image.src = e.target.result;
+          
+          const lastDotIndex = file.name.lastIndexOf(".");
+          const fileNameWithoutExtension = lastDotIndex > 0 ? file.name.substring(0, lastDotIndex) : file.name;
+          filename = fileNameWithoutExtension;
         };
         reader.readAsDataURL(file);
       }
@@ -117,7 +122,7 @@
 
     downloadButton.addEventListener('click', () => {
       const link = document.createElement('a');
-      link.download = 'gazou-magick.png';
+      link.download = `${filename}-加工後.png`;
       link.href = canvas.toDataURL('image/png');
       link.click();
     });

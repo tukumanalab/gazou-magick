@@ -11,8 +11,8 @@
       padding: 2rem;
     }
     canvas {
-      margin-top: 2rem;
-      max-width: 100%;
+      margin: 20px auto;
+      border: 1px solid #ccc;
     }
   </style>
 </head>
@@ -35,13 +35,16 @@
   </div>
   <button id="processButton">画像を加工</button>
   <div id="output">
-    <h2>加工後の画像</h2>
     <canvas id="canvas"></canvas>
+  </div>
+  <div>
+    <button id="downloadButton">ダウンロード</button>
   </div>
 
   <script>
     const fileInput = document.getElementById('fileInput');
     const processButton = document.getElementById('processButton');
+    const downloadButton = document.getElementById('downloadButton');
     const removeBackgroundCheckbox = document.getElementById('removeBackground');
     const invertColorsCheckbox = document.getElementById('invertColors');
     const flipHorizontalCheckbox = document.getElementById('flipHorizontal');
@@ -110,6 +113,13 @@
       };
 
       image.onload();
+    });
+
+    downloadButton.addEventListener('click', () => {
+      const link = document.createElement('a');
+      link.download = 'gazou-magick.png';
+      link.href = canvas.toDataURL('image/png');
+      link.click();
     });
   </script>
 </body>

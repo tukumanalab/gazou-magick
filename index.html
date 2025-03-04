@@ -47,7 +47,7 @@
 
   <!-- SVGをPDFに変換するためのライブラリ -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/svg2pdf.js/2.2.0/svg2pdf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/svg2pdf.js@2.2.0/dist/svg2pdf.umd.min.js"></script>
   
   <script>
     const fileInput = document.getElementById('fileInput');
@@ -187,7 +187,9 @@
       });
       
       // SVGをPDFに変換
-      window.svg2pdf(svgElement, pdf, {
+      pdf.svg(svgElement, {
+        x: 0,
+        y: 0,
         width: width,
         height: height
       })

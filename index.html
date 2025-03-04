@@ -84,7 +84,6 @@
       SVG→PDF
     </label>
   </div>
-  <button id="processButton">画像を加工</button>
   <div id="output">
     <canvas id="canvas"></canvas>
   </div>
@@ -94,7 +93,6 @@
 
   <script>
     const fileInput = document.getElementById('fileInput');
-    const processButton = document.getElementById('processButton');
     const downloadButton = document.getElementById('downloadButton');
     const removeBackgroundCheckbox = document.getElementById('removeBackground');
     const invertColorsCheckbox = document.getElementById('invertColors');
@@ -107,6 +105,66 @@
     let filename = 'gazou-magick.png';
     let svgContent = '';
 
+    // 画像処理関数
+    function processImage() {
+      if (!image.src) {
+        return;
+      }
+
+      // SVG->PDF変換の場合は画像処理をスキップ
+      if (svgToPdfCheckbox.checked && svgContent) {
+        // プレビュー表示のみを行う
+        canvas.width = image.width;
+        canvas.height = image.height;
+        ctx.drawImage(image, 0, 0);
+        return;
+      }
+
+      canvas.width = image.width;
+      canvas.height = image.height;
+
+      // 描画
+      ctx.drawImage(image, 0, 0);
+
+      // 背景透過・白黒反転処理
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const data = imageData.data;
+
+      for (let i = 0; i < data.length; i += 4) {
+        // 背景透過（白に近いピクセルを透明に）
+        if (removeBackgroundCheckbox.checked && data[i] > 200 && data[i + 1] > 200 && data[i + 2] > 200) {
+          data[i + 3] = 0; // Alpha値を0に
+        } else if (invertColorsCheckbox.checked) {
+          // 白黒反転
+          data[i] = 255 - data[i];     // Red
+          data[i + 1] = 255 - data[i + 1]; // Green
+          data[i + 2] = 255 - data[i + 2]; // Blue
+        }
+      }
+
+      // 加工したデータをCanvasに戻す
+      ctx.putImageData(imageData, 0, 0);
+
+      // 左右反転
+      if (flipHorizontalCheckbox.checked) {
+        const flippedCanvas = document.createElement('canvas');
+        const flippedCtx = flippedCanvas.getContext('2d');
+        flippedCanvas.width = canvas.width;
+        flippedCanvas.height = canvas.height;
+
+        flippedCtx.scale(-1, 1); // X軸反転
+        flippedCtx.drawImage(canvas, -canvas.width, 0);
+
+        // 結果を元のCanvasに描画
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(flippedCanvas, 0, 0);
+      }
+    }
+
+    // 画像が読み込まれたら処理実行
+    image.onload = processImage;
+
+    // ファイル選択時の処理
     fileInput.addEventListener('change', (event) => {
       const file = event.target.files[0];
       if (file) {
@@ -136,65 +194,11 @@
       }
     });
 
-    processButton.addEventListener('click', () => {
-      if (!image.src) {
-        alert('画像を選択してください！');
-        return;
-      }
-
-      // SVG->PDF変換の場合は画像処理をスキップ
-      if (svgToPdfCheckbox.checked && svgContent) {
-        // プレビュー表示のみを行う
-        canvas.width = image.width;
-        canvas.height = image.height;
-        ctx.drawImage(image, 0, 0);
-        return;
-      }
-
-      image.onload = () => {
-        canvas.width = image.width;
-        canvas.height = image.height;
-
-        // 描画
-        ctx.drawImage(image, 0, 0);
-
-        // 背景透過・白黒反転処理
-        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-        const data = imageData.data;
-
-        for (let i = 0; i < data.length; i += 4) {
-          // 背景透過（白に近いピクセルを透明に）
-          if (removeBackgroundCheckbox.checked && data[i] > 200 && data[i + 1] > 200 && data[i + 2] > 200) {
-            data[i + 3] = 0; // Alpha値を0に
-          } else if (invertColorsCheckbox.checked) {
-            // 白黒反転
-            data[i] = 255 - data[i];     // Red
-            data[i + 1] = 255 - data[i + 1]; // Green
-            data[i + 2] = 255 - data[i + 2]; // Blue
-          }
-        }
-
-        // 加工したデータをCanvasに戻す
-        ctx.putImageData(imageData, 0, 0);
-
-        // 左右反転
-        if (flipHorizontalCheckbox.checked) {
-          const flippedCanvas = document.createElement('canvas');
-          const flippedCtx = flippedCanvas.getContext('2d');
-          flippedCanvas.width = canvas.width;
-          flippedCanvas.height = canvas.height;
-
-          flippedCtx.scale(-1, 1); // X軸反転
-          flippedCtx.drawImage(canvas, -canvas.width, 0);
-
-          // 結果を元のCanvasに描画
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-          ctx.drawImage(flippedCanvas, 0, 0);
-        }
-      };
-
-      image.onload();
-    });
+    // チェックボックスの変更時に画像処理を実行
+    removeBackgroundCheckbox.addEventListener('change', processImage);
+    invertColorsCheckbox.addEventListener('change', processImage);
+    flipHorizontalCheckbox.addEventListener('change', processImage);
+    svgToPdfCheckbox.addEventListener('change', processImage);
 
     downloadButton.addEventListener('click', () => {
       if (svgToPdfCheckbox.checked && svgContent) {

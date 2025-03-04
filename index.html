@@ -51,7 +51,20 @@
 
   <!-- SVG to PDF conversion libraries -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/svg2pdf.js@2.2.1/dist/svg2pdf.umd.min.js"></script>
+  <script>
+    // svg2pdf.jsライブラリを直接埋め込み
+    document.addEventListener('DOMContentLoaded', function() {
+      const script = document.createElement('script');
+      script.src = "https://unpkg.com/svg2pdf.js@2.2.0/dist/svg2pdf.umd.min.js";
+      script.onload = function() {
+        console.log('svg2pdf.js library loaded successfully');
+      };
+      script.onerror = function() {
+        console.error('Failed to load svg2pdf.js library');
+      };
+      document.head.appendChild(script);
+    });
+  </script>
 
   <script>
     const fileInput = document.getElementById('fileInput');
@@ -218,21 +231,76 @@
           console.log('Starting svg2pdf conversion');
           
           try {
-            // svg2pdfライブラリの関数を確認
-            if (typeof window.svg2pdf === 'undefined') {
-              console.error('svg2pdf function not found in window object');
-              
-              // svg2pdfがグローバルに存在しない場合、別の名前空間を確認
-              if (typeof svg2pdf === 'function') {
-                console.log('Found svg2pdf in global namespace');
-                window.svg2pdf = svg2pdf;
-              } else {
-                throw new Error('SVG→PDF変換ライブラリが見つかりません');
-              }
+            console.log('Available global objects:', Object.keys(window).filter(key => key.toLowerCase().includes('svg')));
+            
+            // svg2pdfライブラリの関数を確認（様々な可能性を試す）
+            let svg2pdfFunction = null;
+            
+            if (typeof window.svg2pdf === 'function') {
+              console.log('Found svg2pdf as window.svg2pdf');
+              svg2pdfFunction = window.svg2pdf;
+            } else if (typeof svg2pdf === 'function') {
+              console.log('Found svg2pdf in global namespace');
+              svg2pdfFunction = svg2pdf;
+            } else if (window.svg2pdf && typeof window.svg2pdf.default === 'function') {
+              console.log('Found svg2pdf.default');
+              svg2pdfFunction = window.svg2pdf.default;
+            } else if (typeof window.svg2pdfjs === 'function') {
+              console.log('Found svg2pdfjs');
+              svg2pdfFunction = window.svg2pdfjs;
+            } else {
+              // 最後の手段として、直接スクリプトを追加
+              console.log('No svg2pdf function found, loading directly');
+              return new Promise((resolve, reject) => {
+                const script = document.createElement('script');
+                script.src = "https://unpkg.com/svg2pdf.js@2.2.0/dist/svg2pdf.umd.min.js";
+                script.onload = () => {
+                  console.log('svg2pdf.js loaded dynamically, available globals:', Object.keys(window).filter(key => key.toLowerCase().includes('svg')));
+                  
+                  // 再度関数を探す
+                  if (typeof window.svg2pdf === 'function') {
+                    svg2pdfFunction = window.svg2pdf;
+                  } else if (typeof svg2pdf === 'function') {
+                    svg2pdfFunction = svg2pdf;
+                  } else if (window.svg2pdf && typeof window.svg2pdf.default === 'function') {
+                    svg2pdfFunction = window.svg2pdf.default;
+                  } else {
+                    reject(new Error('SVG→PDF変換ライブラリを読み込みましたが、関数が見つかりません'));
+                    return;
+                  }
+                  
+                  // 変換を実行
+                  svg2pdfFunction(svgElement, doc, {
+                    width: svgWidth,
+                    height: svgHeight
+                  })
+                  .then(() => {
+                    console.log('SVG to PDF conversion successful (dynamic load)');
+                    doc.save(`${filename}-converted.pdf`);
+                    document.body.removeChild(tempDiv);
+                    resolve();
+                  })
+                  .catch(err => {
+                    console.error('Dynamic load conversion failed:', err);
+                    alert('SVG→PDF変換に失敗しました: ' + err.message);
+                    reject(err);
+                  });
+                };
+                script.onerror = (err) => {
+                  console.error('Failed to load svg2pdf.js dynamically:', err);
+                  alert('SVG→PDF変換ライブラリの読み込みに失敗しました。インターネット接続を確認してください。');
+                  reject(new Error('Failed to load svg2pdf.js library'));
+                };
+                document.head.appendChild(script);
+              });
+            }
+            
+            if (!svg2pdfFunction) {
+              throw new Error('SVG→PDF変換ライブラリが見つかりません');
             }
             
             // svg2pdf関数を使用してSVGをPDFに変換
-            window.svg2pdf(svgElement, doc, {
+            return svg2pdfFunction(svgElement, doc, {
               width: svgWidth,
               height: svgHeight
             })

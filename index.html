@@ -3,7 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>画像マジック</title>
+  <meta name="description" content="画像マジックは、画像編集・加工ができるツールです。背景透過、白黒反転、左右反転、SVGからPDFへの変換などの機能を簡単に使えます。">
+  <meta name="keywords" content="画像加工,画像編集,背景透過,白黒反転,SVG,PDF変換">
+  <meta property="og:title" content="画像マジック | 簡単画像加工ツール">
+  <meta property="og:description" content="背景透過、白黒反転、SVGからPDFへの変換などの機能がある画像加工ツール">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://champierre.github.io/gazou-magick/">
+  <title>画像マジック | 画像加工ツール</title>
   <!-- SVGをPDFに変換するためのライブラリ -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/svg2pdf.js@2.2.0/dist/svg2pdf.umd.min.js"></script>
@@ -12,15 +18,53 @@
       font-family: Arial, sans-serif;
       text-align: center;
       padding: 2rem;
+      max-width: 900px;
+      margin: 0 auto;
+      color: #333;
+    }
+    h1 {
+      color: #2c3e50;
+      margin-bottom: 0.5rem;
+    }
+    p {
+      margin-bottom: 1.5rem;
     }
     canvas {
       margin: 20px auto;
       border: 1px solid #ccc;
+      max-width: 100%;
+    }
+    #fileInput {
+      margin: 1rem 0;
+    }
+    button {
+      background-color: #3498db;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    button:hover {
+      background-color: #2980b9;
+    }
+    a {
+      color: #3498db;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+    footer {
+      border-top: 1px solid #eee;
+      padding-top: 1rem;
     }
   </style>
 </head>
 <body>
-  <h1>画像マジック</h1>
+  <h1>画像マジック - 画像加工ツール</h1>
+  <p>画像の背景透過、白黒反転、左右反転、SVGからPDFへの変換などが簡単にできるツールです。</p>
   <input type="file" id="fileInput" accept="image/*,image/svg+xml">
   <div style="margin: 1rem 0;">
     <label>

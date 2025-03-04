@@ -66,23 +66,29 @@
   <h1>画像マジック - 画像加工ツール</h1>
   <p>画像の背景透過、白黒反転、左右反転、SVGからPDFへの変換などが簡単にできるツールです。</p>
   <input type="file" id="fileInput" accept="image/*,image/svg+xml">
-  <div style="margin: 1rem 0;">
-    <label>
-      <input type="checkbox" id="removeBackground">
-      背景透過
-    </label>
-    <label style="margin-left: 1rem;">
-      <input type="checkbox" id="invertColors">
-      白黒反転
-    </label>
-    <label style="margin-left: 1rem;">
-      <input type="checkbox" id="flipHorizontal">
-      左右反転
-    </label>
-    <label style="margin-left: 1rem;">
-      <input type="checkbox" id="svgToPdf">
-      SVG→PDF
-    </label>
+  <div style="margin: 1rem 0; display: flex; gap: 1rem;">
+    <div id="pngOptionsGroup" style="flex: 1; border: 1px solid #eee; padding: 0.7rem; border-radius: 4px;">
+      <h3 style="margin-top: 0; margin-bottom: 0.3rem; font-size: 0.9rem;">PNG画像加工</h3>
+      <label>
+        <input type="checkbox" id="removeBackground" disabled>
+        背景透過
+      </label>
+      <label style="margin-left: 1rem;">
+        <input type="checkbox" id="invertColors" disabled>
+        白黒反転
+      </label>
+      <label style="margin-left: 1rem;">
+        <input type="checkbox" id="flipHorizontal" disabled>
+        左右反転
+      </label>
+    </div>
+    <div id="svgOptionsGroup" style="flex: 1; border: 1px solid #eee; padding: 0.7rem; border-radius: 4px;">
+      <h3 style="margin-top: 0; margin-bottom: 0.3rem; font-size: 0.9rem;">SVG画像加工</h3>
+      <label>
+        <input type="checkbox" id="svgToPdf" disabled>
+        SVG→PDF
+      </label>
+    </div>
   </div>
   <div id="output">
     <canvas id="canvas"></canvas>
@@ -172,8 +178,26 @@
         const fileNameWithoutExtension = lastDotIndex > 0 ? file.name.substring(0, lastDotIndex) : file.name;
         filename = fileNameWithoutExtension;
 
+        // チェックボックスをすべて無効化してリセット
+        removeBackgroundCheckbox.checked = false;
+        invertColorsCheckbox.checked = false;
+        flipHorizontalCheckbox.checked = false;
+        svgToPdfCheckbox.checked = false;
+        
+        removeBackgroundCheckbox.disabled = true;
+        invertColorsCheckbox.disabled = true;
+        flipHorizontalCheckbox.disabled = true;
+        svgToPdfCheckbox.disabled = true;
+
         // SVGファイルの場合
         if (file.type === 'image/svg+xml') {
+          // SVG用のオプションだけを有効化
+          svgToPdfCheckbox.disabled = false;
+          
+          // PNG用のオプショングループを非表示
+          document.getElementById('pngOptionsGroup').style.opacity = '0.5';
+          document.getElementById('svgOptionsGroup').style.opacity = '1';
+          
           const reader = new FileReader();
           reader.onload = (e) => {
             svgContent = e.target.result;
@@ -184,6 +208,18 @@
           };
           reader.readAsText(file);
         } else {
+          // PNG画像の場合、PNG用のオプションを有効化
+          removeBackgroundCheckbox.disabled = false;
+          invertColorsCheckbox.disabled = false;
+          flipHorizontalCheckbox.disabled = false;
+          
+          // SVG用のオプショングループを非表示
+          document.getElementById('pngOptionsGroup').style.opacity = '1';
+          document.getElementById('svgOptionsGroup').style.opacity = '0.5';
+          
+          // svgContentをリセット
+          svgContent = '';
+          
           // 通常の画像の場合
           const reader = new FileReader();
           reader.onload = (e) => {

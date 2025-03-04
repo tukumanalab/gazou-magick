@@ -51,7 +51,7 @@
 
   <!-- SVG to PDF conversion libraries -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/svg2pdf.js/2.2.1/svg2pdf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/svg2pdf.js@2.2.1/dist/svg2pdf.min.js"></script>
 
   <script>
     const fileInput = document.getElementById('fileInput');
@@ -214,28 +214,78 @@
           doc.addPage([svgWidth, svgHeight]);
           doc.deletePage(1);
           
-          // Convert SVG to PDF using window.svg2pdf to ensure we're accessing the global function
-          if (typeof window.svg2pdf !== 'function') {
-            console.error('svg2pdf library not loaded or not a function');
-            alert('SVG→PDF変換ライブラリの読み込みに失敗しました。ページを再読み込みしてください。');
+          // Convert SVG to PDF
+          console.log('Starting svg2pdf conversion');
+          if (typeof window.svg2pdf === 'function') {
+            // 直接グローバル関数として利用可能な場合
+            window.svg2pdf(svgElement, doc, {
+              width: svgWidth,
+              height: svgHeight
+            })
+            .then(() => {
+              console.log('SVG to PDF conversion successful');
+              // Save the PDF
+              doc.save(`${filename}-converted.pdf`);
+              document.body.removeChild(tempDiv);
+            })
+            .catch(error => {
+              console.error('SVG to PDF conversion failed:', error);
+              alert('SVG→PDF変換に失敗しました: ' + error.message);
+            });
             return;
           }
           
-          console.log('Starting svg2pdf conversion');
-          window.svg2pdf(svgElement, doc, {
-            width: svgWidth,
-            height: svgHeight
-          })
-          .then(() => {
-            console.log('SVG to PDF conversion successful');
-            // Save the PDF
-            doc.save(`${filename}-converted.pdf`);
-            document.body.removeChild(tempDiv);
-          })
-          .catch(error => {
-            console.error('SVG to PDF conversion failed:', error);
-            alert('SVG→PDF変換に失敗しました: ' + error.message);
-          });
+          // svg2pdfライブラリがモジュールとして読み込まれている場合
+          console.log('Trying to use svg2pdf as a module');
+          import('https://cdn.jsdelivr.net/npm/svg2pdf.js@2.2.1/dist/svg2pdf.min.js')
+            .then(module => {
+              if (typeof module.default === 'function') {
+                return module.default(svgElement, doc, {
+                  width: svgWidth,
+                  height: svgHeight
+                });
+              } else {
+                throw new Error('svg2pdf module loaded but function not found');
+              }
+            })
+            .then(() => {
+              console.log('SVG to PDF conversion successful (module)');
+              doc.save(`${filename}-converted.pdf`);
+              document.body.removeChild(tempDiv);
+            })
+            .catch(error => {
+              console.error('Module import failed:', error);
+              
+              // 最後の手段として、CDNを直接スクリプトとして追加して再試行
+              console.log('Trying to load svg2pdf dynamically');
+              const script = document.createElement('script');
+              script.src = 'https://cdn.jsdelivr.net/npm/svg2pdf.js@2.2.1/dist/svg2pdf.umd.min.js';
+              script.onload = () => {
+                if (typeof window.svg2pdf === 'function') {
+                  window.svg2pdf(svgElement, doc, {
+                    width: svgWidth,
+                    height: svgHeight
+                  })
+                  .then(() => {
+                    console.log('SVG to PDF conversion successful (dynamic load)');
+                    doc.save(`${filename}-converted.pdf`);
+                    document.body.removeChild(tempDiv);
+                  })
+                  .catch(err => {
+                    console.error('Dynamic load conversion failed:', err);
+                    alert('SVG→PDF変換に失敗しました。別のSVGファイルを試してください。');
+                  });
+                } else {
+                  console.error('Dynamic load failed to provide svg2pdf function');
+                  alert('SVG→PDF変換ライブラリの読み込みに失敗しました。');
+                }
+              };
+              script.onerror = () => {
+                console.error('Failed to load svg2pdf dynamically');
+                alert('SVG→PDF変換ライブラリの読み込みに失敗しました。インターネット接続を確認してください。');
+              };
+              document.head.appendChild(script);
+            });
         } catch (error) {
           console.error('Error in SVG to PDF conversion:', error);
           alert('SVG→PDF変換中にエラーが発生しました: ' + error.message);

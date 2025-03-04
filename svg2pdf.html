@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SVG to PDF 変換</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 2rem;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .container {
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      padding: 2rem;
+      margin-top: 2rem;
+      background-color: #f9f9f9;
+    }
+    .upload-area {
+      border: 2px dashed #ccc;
+      border-radius: 8px;
+      padding: 2rem;
+      margin: 1rem 0;
+      background-color: #fff;
+      cursor: pointer;
+    }
+    .upload-area:hover {
+      border-color: #999;
+      background-color: #f5f5f5;
+    }
+    .upload-area.active {
+      border-color: #4CAF50;
+      background-color: #e8f5e9;
+    }
+    .btn {
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      text-align: center;
+      text-decoration: none;
+      display: inline-block;
+      font-size: 16px;
+      margin: 10px 2px;
+      cursor: pointer;
+      border-radius: 4px;
+    }
+    .btn:disabled {
+      background-color: #cccccc;
+      cursor: not-allowed;
+    }
+    .preview {
+      max-width: 100%;
+      max-height: 300px;
+      margin: 1rem 0;
+      border: 1px solid #ddd;
+    }
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <h1>SVG to PDF 変換</h1>
+  <p>SVGファイルをアップロードして、PDFに変換します。</p>
+  
+  <div class="container">
+    <input type="file" id="fileInput" accept=".svg,image/svg+xml" class="hidden">
+    <div id="uploadArea" class="upload-area">
+      <p>ここにSVGファイルをドラッグ＆ドロップ</p>
+      <p>または</p>
+      <button id="browseButton" class="btn">ファイルを選択</button>
+    </div>
+    
+    <div id="previewContainer" class="hidden">
+      <h3>プレビュー</h3>
+      <img id="preview" class="preview">
+      <p id="fileName"></p>
+      <button id="convertButton" class="btn" disabled>PDFに変換</button>
+    </div>
+  </div>
+
+  <div style="margin-top: 2rem;">
+    <a href="index.html">画像マジックに戻る</a>
+  </div>
+
+  <!-- SVGをPDFに変換するためのライブラリ -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/svg2pdf.js/2.2.0/svg2pdf.min.js"></script>
+  
+  <script>
+    // DOM要素の取得
+    const fileInput = document.getElementById('fileInput');
+    const uploadArea = document.getElementById('uploadArea');
+    const browseButton = document.getElementById('browseButton');
+    const previewContainer = document.getElementById('previewContainer');
+    const preview = document.getElementById('preview');
+    const fileName = document.getElementById('fileName');
+    const convertButton = document.getElementById('convertButton');
+    
+    // 変数
+    let svgContent = '';
+    let originalFileName = '';
+    
+    // ファイル選択ボタンのイベントリスナー
+    browseButton.addEventListener('click', () => {
+      fileInput.click();
+    });
+    
+    // ファイル選択時のイベントリスナー
+    fileInput.addEventListener('change', handleFileSelect);
+    
+    // ドラッグ&ドロップのイベントリスナー
+    uploadArea.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadArea.classList.add('active');
+    });
+    
+    uploadArea.addEventListener('dragleave', () => {
+      uploadArea.classList.remove('active');
+    });
+    
+    uploadArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadArea.classList.remove('active');
+      
+      const files = e.dataTransfer.files;
+      if (files.length > 0) {
+        fileInput.files = files;
+        handleFileSelect({ target: fileInput });
+      }
+    });
+    
+    // 変換ボタンのイベントリスナー
+    convertButton.addEventListener('click', convertSvgToPdf);
+    
+    // ファイル選択処理
+    function handleFileSelect(event) {
+      const file = event.target.files[0];
+      
+      if (file && file.type === 'image/svg+xml') {
+        // ファイル名を取得（拡張子なし）
+        const lastDotIndex = file.name.lastIndexOf('.');
+        originalFileName = lastDotIndex > 0 ? file.name.substring(0, lastDotIndex) : file.name;
+        
+        // ファイル名を表示
+        fileName.textContent = file.name;
+        
+        // FileReaderでファイルを読み込む
+        const reader = new FileReader();
+        
+        // テキストとして読み込み
+        reader.onload = (e) => {
+          svgContent = e.target.result;
+          
+          // プレビュー用にURLを作成
+          const url = URL.createObjectURL(file);
+          preview.src = url;
+          
+          // プレビューを表示
+          previewContainer.classList.remove('hidden');
+          
+          // 変換ボタンを有効化
+          convertButton.disabled = false;
+        };
+        
+        reader.readAsText(file);
+      } else if (file) {
+        alert('SVGファイルのみアップロードできます。');
+      }
+    }
+    
+    // SVGをPDFに変換する関数
+    function convertSvgToPdf() {
+      // SVG文字列からDOMを作成
+      const parser = new DOMParser();
+      const svgDoc = parser.parseFromString(svgContent, 'image/svg+xml');
+      const svgElement = svgDoc.documentElement;
+      
+      // SVGの寸法を取得
+      let width = parseFloat(svgElement.getAttribute('width') || 0);
+      let height = parseFloat(svgElement.getAttribute('height') || 0);
+      
+      // 単位がpxの場合は数値のみを抽出
+      if (typeof width === 'string' && width.includes('px')) {
+        width = parseFloat(width);
+      }
+      if (typeof height === 'string' && height.includes('px')) {
+        height = parseFloat(height);
+      }
+      
+      // viewBoxから寸法を取得（width/heightが設定されていない場合）
+      if (!width || !height) {
+        const viewBox = svgElement.getAttribute('viewBox');
+        if (viewBox) {
+          const [, , vbWidth, vbHeight] = viewBox.split(' ').map(parseFloat);
+          width = width || vbWidth;
+          height = height || vbHeight;
+        }
+      }
+      
+      // デフォルトサイズ（寸法が取得できない場合）
+      width = width || 595;  // A4幅（ポイント）
+      height = height || 842; // A4高さ（ポイント）
+      
+      // jsPDFのインスタンスを作成（単位はpt、1pt = 1/72インチ、1px = 0.75pt）
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({
+        orientation: width > height ? 'landscape' : 'portrait',
+        unit: 'pt',
+        format: [width, height]
+      });
+      
+      // 変換中の表示
+      convertButton.disabled = true;
+      convertButton.textContent = '変換中...';
+      
+      // SVGをPDFに変換
+      window.svg2pdf(svgElement, pdf, {
+        width: width,
+        height: height
+      })
+      .then(() => {
+        // PDFをダウンロード
+        pdf.save(`${originalFileName}.pdf`);
+        
+        // ボタンを元に戻す
+        convertButton.disabled = false;
+        convertButton.textContent = 'PDFに変換';
+      })
+      .catch(err => {
+        console.error('SVGからPDFへの変換エラー:', err);
+        alert('SVGからPDFへの変換中にエラーが発生しました。');
+        
+        // ボタンを元に戻す
+        convertButton.disabled = false;
+        convertButton.textContent = 'PDFに変換';
+      });
+    }
+  </script>
+</body>
+</html>

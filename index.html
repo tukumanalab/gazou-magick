@@ -187,9 +187,7 @@
       });
       
       // SVGをPDFに変換
-      pdf.svg(svgElement, {
-        x: 0,
-        y: 0,
+      window.svg2pdf(svgElement, pdf, {
         width: width,
         height: height
       })

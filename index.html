@@ -44,10 +44,16 @@
       padding: 10px 20px;
       border-radius: 4px;
       cursor: pointer;
-      transition: background-color 0.3s;
+      transition: all 0.3s;
     }
     button:hover {
       background-color: #2980b9;
+    }
+    button:disabled {
+      background-color: #cccccc;
+      color: #999999;
+      cursor: not-allowed;
+      opacity: 0.7;
     }
     a {
       color: #3498db;
@@ -94,18 +100,23 @@
     <canvas id="canvas"></canvas>
   </div>
   <div>
+    <div id="downloadFileName" style="margin-bottom: 0.5rem; font-size: 0.9rem;"></div>
     <button id="downloadButton">ダウンロード</button>
   </div>
 
   <script>
     const fileInput = document.getElementById('fileInput');
     const downloadButton = document.getElementById('downloadButton');
+    const downloadFileName = document.getElementById('downloadFileName');
     const removeBackgroundCheckbox = document.getElementById('removeBackground');
     const invertColorsCheckbox = document.getElementById('invertColors');
     const flipHorizontalCheckbox = document.getElementById('flipHorizontal');
     const svgToPdfCheckbox = document.getElementById('svgToPdf');
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
+    
+    // 初期状態ではダウンロードボタンを無効化
+    downloadButton.disabled = true;
 
     let image = new Image();
     let filename = 'gazou-magick.png';
@@ -167,8 +178,11 @@
       }
     }
 
-    // 画像が読み込まれたら処理実行
-    image.onload = processImage;
+    // 画像が読み込まれたら処理実行と状態更新
+    image.onload = () => {
+      processImage();
+      updateDownloadStatus();
+    };
 
     // ファイル選択時の処理
     fileInput.addEventListener('change', (event) => {
@@ -177,6 +191,9 @@
         const lastDotIndex = file.name.lastIndexOf(".");
         const fileNameWithoutExtension = lastDotIndex > 0 ? file.name.substring(0, lastDotIndex) : file.name;
         filename = fileNameWithoutExtension;
+        
+        // ダウンロード状態を更新
+        updateDownloadStatus();
 
         // チェックボックスをすべて無効化してリセット
         removeBackgroundCheckbox.checked = false;
@@ -230,11 +247,68 @@
       }
     });
 
+    // 加工内容に応じたサフィックスを生成する関数
+    function getProcessingSuffix() {
+      const suffixes = [];
+      
+      if (removeBackgroundCheckbox.checked) {
+        suffixes.push('transparent');
+      }
+      
+      if (invertColorsCheckbox.checked) {
+        suffixes.push('inverted');
+      }
+      
+      if (flipHorizontalCheckbox.checked) {
+        suffixes.push('flipped');
+      }
+      
+      return suffixes.length > 0 ? `-${suffixes.join('-')}` : '';
+    }
+    
+    // ダウンロードファイル名を表示する関数とボタンの有効/無効を切り替える
+    function updateDownloadStatus() {
+      // チェックボックスの状態を確認
+      const isAnyOptionChecked = 
+        removeBackgroundCheckbox.checked || 
+        invertColorsCheckbox.checked || 
+        flipHorizontalCheckbox.checked || 
+        svgToPdfCheckbox.checked;
+      
+      // ファイルがアップロードされていて、かつチェックボックスが選択されている場合のみボタンを有効化
+      const enableDownload = image.src && isAnyOptionChecked;
+      downloadButton.disabled = !enableDownload;
+      
+      // ファイル名の表示を更新 (ボタンが有効な場合のみ表示)
+      if (!enableDownload) {
+        downloadFileName.textContent = '';
+      } else if (svgToPdfCheckbox.checked && svgContent) {
+        downloadFileName.textContent = `${filename}.pdf`;
+      } else if (image.src) {
+        const suffix = getProcessingSuffix();
+        downloadFileName.textContent = `${filename}${suffix}.png`;
+      } else {
+        downloadFileName.textContent = '';
+      }
+    }
+
     // チェックボックスの変更時に画像処理を実行
-    removeBackgroundCheckbox.addEventListener('change', processImage);
-    invertColorsCheckbox.addEventListener('change', processImage);
-    flipHorizontalCheckbox.addEventListener('change', processImage);
-    svgToPdfCheckbox.addEventListener('change', processImage);
+    removeBackgroundCheckbox.addEventListener('change', () => {
+      processImage();
+      updateDownloadStatus();
+    });
+    invertColorsCheckbox.addEventListener('change', () => {
+      processImage();
+      updateDownloadStatus();
+    });
+    flipHorizontalCheckbox.addEventListener('change', () => {
+      processImage();
+      updateDownloadStatus();
+    });
+    svgToPdfCheckbox.addEventListener('change', () => {
+      processImage();
+      updateDownloadStatus();
+    });
 
     downloadButton.addEventListener('click', () => {
       if (svgToPdfCheckbox.checked && svgContent) {
@@ -243,7 +317,8 @@
       } else {
         // 通常の画像処理後のダウンロード
         const link = document.createElement('a');
-        link.download = `${filename}-加工後.png`;
+        const suffix = getProcessingSuffix();
+        link.download = `${filename}${suffix}.png`;
         link.href = canvas.toDataURL('image/png');
         link.click();
       }

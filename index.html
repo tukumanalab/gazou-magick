@@ -4,6 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>画像マジック</title>
+  <!-- SVGをPDFに変換するためのライブラリ -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/svg2pdf.js@2.2.0/dist/svg2pdf.umd.min.js"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -18,7 +21,7 @@
 </head>
 <body>
   <h1>画像マジック</h1>
-  <input type="file" id="fileInput" accept="image/*">
+  <input type="file" id="fileInput" accept="image/*,image/svg+xml">
   <div style="margin: 1rem 0;">
     <label>
       <input type="checkbox" id="removeBackground">
@@ -31,6 +34,10 @@
     <label style="margin-left: 1rem;">
       <input type="checkbox" id="flipHorizontal">
       左右反転
+    </label>
+    <label style="margin-left: 1rem;">
+      <input type="checkbox" id="svgToPdf">
+      SVG→PDF
     </label>
   </div>
   <button id="processButton">画像を加工</button>
@@ -48,30 +55,55 @@
     const removeBackgroundCheckbox = document.getElementById('removeBackground');
     const invertColorsCheckbox = document.getElementById('invertColors');
     const flipHorizontalCheckbox = document.getElementById('flipHorizontal');
+    const svgToPdfCheckbox = document.getElementById('svgToPdf');
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
 
     let image = new Image();
     let filename = 'gazou-magick.png';
+    let svgContent = '';
 
     fileInput.addEventListener('change', (event) => {
       const file = event.target.files[0];
       if (file) {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          image.src = e.target.result;
-          
-          const lastDotIndex = file.name.lastIndexOf(".");
-          const fileNameWithoutExtension = lastDotIndex > 0 ? file.name.substring(0, lastDotIndex) : file.name;
-          filename = fileNameWithoutExtension;
-        };
-        reader.readAsDataURL(file);
+        const lastDotIndex = file.name.lastIndexOf(".");
+        const fileNameWithoutExtension = lastDotIndex > 0 ? file.name.substring(0, lastDotIndex) : file.name;
+        filename = fileNameWithoutExtension;
+
+        // SVGファイルの場合
+        if (file.type === 'image/svg+xml') {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            svgContent = e.target.result;
+            
+            // SVGをimageオブジェクトにも読み込む
+            const url = URL.createObjectURL(file);
+            image.src = url;
+          };
+          reader.readAsText(file);
+        } else {
+          // 通常の画像の場合
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            image.src = e.target.result;
+          };
+          reader.readAsDataURL(file);
+        }
       }
     });
 
     processButton.addEventListener('click', () => {
       if (!image.src) {
         alert('画像を選択してください！');
+        return;
+      }
+
+      // SVG->PDF変換の場合は画像処理をスキップ
+      if (svgToPdfCheckbox.checked && svgContent) {
+        // プレビュー表示のみを行う
+        canvas.width = image.width;
+        canvas.height = image.height;
+        ctx.drawImage(image, 0, 0);
         return;
       }
 
@@ -121,11 +153,87 @@
     });
 
     downloadButton.addEventListener('click', () => {
-      const link = document.createElement('a');
-      link.download = `${filename}-加工後.png`;
-      link.href = canvas.toDataURL('image/png');
-      link.click();
+      if (svgToPdfCheckbox.checked && svgContent) {
+        // SVGからPDFに変換してダウンロード
+        convertSvgToPdf();
+      } else {
+        // 通常の画像処理後のダウンロード
+        const link = document.createElement('a');
+        link.download = `${filename}-加工後.png`;
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+      }
     });
+
+    // SVGをPDFに変換する関数
+    function convertSvgToPdf() {
+      // SVG文字列からDOMを作成
+      const parser = new DOMParser();
+      const svgDoc = parser.parseFromString(svgContent, 'image/svg+xml');
+      const svgElement = svgDoc.documentElement;
+      
+      // SVGの寸法を取得
+      let width = parseFloat(svgElement.getAttribute('width') || 0);
+      let height = parseFloat(svgElement.getAttribute('height') || 0);
+      
+      // 単位がpxの場合は数値のみを抽出
+      if (typeof width === 'string' && width.includes('px')) {
+        width = parseFloat(width);
+      }
+      if (typeof height === 'string' && height.includes('px')) {
+        height = parseFloat(height);
+      }
+      
+      // viewBoxから寸法を取得（width/heightが設定されていない場合）
+      if (!width || !height) {
+        const viewBox = svgElement.getAttribute('viewBox');
+        if (viewBox) {
+          const [, , vbWidth, vbHeight] = viewBox.split(' ').map(parseFloat);
+          width = width || vbWidth;
+          height = height || vbHeight;
+        }
+      }
+      
+      // デフォルトサイズ（寸法が取得できない場合）
+      width = width || 595;  // A4幅（ポイント）
+      height = height || 842; // A4高さ（ポイント）
+      
+      // jsPDFのインスタンスを作成（単位はpt、1pt = 1/72インチ、1px = 0.75pt）
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({
+        orientation: width > height ? 'landscape' : 'portrait',
+        unit: 'pt',
+        format: [width, height]
+      });
+      
+      // 変換中の表示
+      downloadButton.disabled = true;
+      downloadButton.textContent = '変換中...';
+      
+      // SVGをPDFに変換
+      pdf.svg(svgElement, {
+        x: 0,
+        y: 0,
+        width: width,
+        height: height
+      })
+      .then(() => {
+        // PDFをダウンロード
+        pdf.save(`${filename}.pdf`);
+        
+        // ボタンを元に戻す
+        downloadButton.disabled = false;
+        downloadButton.textContent = 'ダウンロード';
+      })
+      .catch(err => {
+        console.error('SVGからPDFへの変換エラー:', err);
+        alert('SVGからPDFへの変換中にエラーが発生しました。');
+        
+        // ボタンを元に戻す
+        downloadButton.disabled = false;
+        downloadButton.textContent = 'ダウンロード';
+      });
+    }
   </script>
 </body>
 </html>

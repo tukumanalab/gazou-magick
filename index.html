@@ -331,25 +331,58 @@
       const svgDoc = parser.parseFromString(svgContent, 'image/svg+xml');
       const svgElement = svgDoc.documentElement;
       
-      // SVGの寸法を取得
-      let width = parseFloat(svgElement.getAttribute('width') || 0);
-      let height = parseFloat(svgElement.getAttribute('height') || 0);
+      // SVGの寸法を取得（単位付きの文字列として）
+      let widthStr = svgElement.getAttribute('width') || '';
+      let heightStr = svgElement.getAttribute('height') || '';
+      let width = 0;
+      let height = 0;
       
-      // 単位がpxの場合は数値のみを抽出
-      if (typeof width === 'string' && width.includes('px')) {
-        width = parseFloat(width);
+      // 単位を解析して適切にポイントに変換する関数
+      function parseUnitValue(value) {
+        if (!value) return 0;
+        
+        // 数値と単位を分離
+        const match = value.match(/^([\d.]+)(\w*)$/);
+        if (!match) return 0;
+        
+        const num = parseFloat(match[1]);
+        const unit = match[2];
+        
+        // 単位に応じてポイントに変換
+        switch (unit) {
+          case 'mm':
+            // 1mm = 2.834645669291339 ポイント
+            return num * 2.834645669291339;
+          case 'cm':
+            // 1cm = 28.34645669291339 ポイント
+            return num * 28.34645669291339;
+          case 'in':
+            // 1インチ = 72ポイント
+            return num * 72;
+          case 'pt':
+            // すでにポイント
+            return num;
+          case 'px':
+          case '':
+            // ピクセルまたは単位なし（1px = 0.75pt）
+            return num * 0.75;
+          default:
+            // その他の単位はピクセルとして扱う
+            return num * 0.75;
+        }
       }
-      if (typeof height === 'string' && height.includes('px')) {
-        height = parseFloat(height);
-      }
+      
+      // 寸法を解析
+      width = parseUnitValue(widthStr);
+      height = parseUnitValue(heightStr);
       
       // viewBoxから寸法を取得（width/heightが設定されていない場合）
       if (!width || !height) {
         const viewBox = svgElement.getAttribute('viewBox');
         if (viewBox) {
           const [, , vbWidth, vbHeight] = viewBox.split(' ').map(parseFloat);
-          width = width || vbWidth;
-          height = height || vbHeight;
+          width = width || (vbWidth * 0.75);  // viewBoxの値はピクセルとして扱う
+          height = height || (vbHeight * 0.75);
         }
       }
       
@@ -357,7 +390,7 @@
       width = width || 595;  // A4幅（ポイント）
       height = height || 842; // A4高さ（ポイント）
       
-      // jsPDFのインスタンスを作成（単位はpt、1pt = 1/72インチ、1px = 0.75pt）
+      // jsPDFのインスタンスを作成（単位はpt）
       const { jsPDF } = window.jspdf;
       const pdf = new jsPDF({
         orientation: width > height ? 'landscape' : 'portrait',

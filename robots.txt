@@ -1,0 +1,15 @@
+# robots.txt for 画像マジック
+# https://tukumanalab.github.io/gazou-magick/
+
+User-agent: *
+Allow: /
+Sitemap: https://tukumanalab.github.io/gazou-magick/sitemap.xml
+
+# Googlebot向けの最適化
+User-agent: Googlebot
+Allow: /
+Crawl-delay: 0
+
+# 画像ボット向け
+User-agent: Googlebot-Image
+Allow: /

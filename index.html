@@ -8,8 +8,42 @@
   <meta property="og:title" content="画像マジック | 簡単画像加工ツール">
   <meta property="og:description" content="背景透過、白黒反転、SVGからPDFへの変換などの機能がある画像加工ツール">
   <meta property="og:type" content="website">
-  <meta property="og:url" content="https://champierre.github.io/gazou-magick/">
-  <title>画像マジック | 画像加工ツール</title>
+  <meta property="og:url" content="https://tukumanalab.github.io/gazou-magick/">
+  <meta property="og:image" content="https://tukumanalab.github.io/gazou-magick/ogp-image.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="画像マジック | 無料オンライン画像加工ツール">
+  <meta name="twitter:description" content="画像マジックは背景透過、白黒反転、SVG→PDF変換など多彩な画像加工機能を無料で使えるオンラインツール">
+  <title>画像マジック - 無料オンライン画像加工ツール | 背景透過・白黒反転・SVG→PDF変換</title>
+  <link rel="canonical" href="https://tukumanalab.github.io/gazou-magick/">
+  <!-- 構造化データ -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebApplication",
+    "name": "画像マジック",
+    "description": "画像マジックは背景透過、白黒反転、左右反転、SVGからPDFへの変換など多彩な画像加工機能を無料で使えるオンラインツールです",
+    "url": "https://tukumanalab.github.io/gazou-magick/",
+    "applicationCategory": "UtilitiesApplication",
+    "operatingSystem": "All",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "JPY"
+    },
+    "featureList": [
+      "背景透過処理",
+      "白黒反転機能",
+      "左右反転機能",
+      "SVGからPDFへの変換",
+      "画像ダウンロード"
+    ],
+    "browserRequirements": "HTML5対応ブラウザ",
+    "creator": {
+      "@type": "Organization",
+      "name": "Tukumana Lab"
+    }
+  }
+  </script>
   <!-- SVGをPDFに変換するためのライブラリ -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/svg2pdf.js@2.2.0/dist/svg2pdf.umd.min.js"></script>
@@ -331,12 +365,11 @@
       const svgDoc = parser.parseFromString(svgContent, 'image/svg+xml');
       const svgElement = svgDoc.documentElement;
       
-      // SVGの寸法を取得（単位付きの文字列として）
-      let widthStr = svgElement.getAttribute('width') || '';
-      let heightStr = svgElement.getAttribute('height') || '';
-      let width = 0;
-      let height = 0;
+      // SVGの寸法を取得
+      let width = parseFloat(svgElement.getAttribute('width') || 0);
+      let height = parseFloat(svgElement.getAttribute('height') || 0);
       
+<<<<<<< HEAD
       // デバッグログ
       console.log('SVG width属性:', widthStr);
       console.log('SVG height属性:', heightStr);
@@ -377,14 +410,28 @@
       let heightMM = parseToMM(heightStr);
       
       console.log('解析後のサイズ(mm):', { widthMM, heightMM });
+=======
+      // 単位がpxの場合は数値のみを抽出
+      if (typeof width === 'string' && width.includes('px')) {
+        width = parseFloat(width);
+      }
+      if (typeof height === 'string' && height.includes('px')) {
+        height = parseFloat(height);
+      }
+>>>>>>> cf3dd8f60f3880dc8c9c3a5edc1f62dc00c1477b
       
       // viewBoxから寸法を取得（width/heightが設定されていない場合）
       if (!widthMM || !heightMM) {
         const viewBox = svgElement.getAttribute('viewBox');
         if (viewBox) {
           const [, , vbWidth, vbHeight] = viewBox.split(' ').map(parseFloat);
+<<<<<<< HEAD
           widthMM = widthMM || (vbWidth * 0.264583);  // viewBoxの値はピクセルとして扱う
           heightMM = heightMM || (vbHeight * 0.264583);
+=======
+          width = width || vbWidth;
+          height = height || vbHeight;
+>>>>>>> cf3dd8f60f3880dc8c9c3a5edc1f62dc00c1477b
         }
       }
       
@@ -392,9 +439,13 @@
       widthMM = widthMM || 210;  // A4幅（mm）
       heightMM = heightMM || 297; // A4高さ（mm）
       
+<<<<<<< HEAD
       console.log('最終的なPDFサイズ(mm):', { widthMM, heightMM });
       
       // jsPDFのインスタンスを作成（単位はmm）
+=======
+      // jsPDFのインスタンスを作成（単位はpt、1pt = 1/72インチ、1px = 0.75pt）
+>>>>>>> cf3dd8f60f3880dc8c9c3a5edc1f62dc00c1477b
       const { jsPDF } = window.jspdf;
       const pdf = new jsPDF({
         orientation: widthMM > heightMM ? 'landscape' : 'portrait',

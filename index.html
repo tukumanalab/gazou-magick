@@ -337,8 +337,12 @@
       let width = 0;
       let height = 0;
       
-      // 単位を解析して適切にポイントに変換する関数
-      function parseUnitValue(value) {
+      // デバッグログ
+      console.log('SVG width属性:', widthStr);
+      console.log('SVG height属性:', heightStr);
+      
+      // 単位を解析して適切にミリメートルに変換する関数
+      function parseToMM(value) {
         if (!value) return 0;
         
         // 数値と単位を分離
@@ -348,66 +352,66 @@
         const num = parseFloat(match[1]);
         const unit = match[2];
         
-        // 単位に応じてポイントに変換
+        // 単位に応じてmmに変換
         switch (unit) {
           case 'mm':
-            // 1mm = 2.834645669291339 ポイント
-            return num * 2.834645669291339;
-          case 'cm':
-            // 1cm = 28.34645669291339 ポイント
-            return num * 28.34645669291339;
-          case 'in':
-            // 1インチ = 72ポイント
-            return num * 72;
-          case 'pt':
-            // すでにポイント
             return num;
+          case 'cm':
+            return num * 10;
+          case 'in':
+            return num * 25.4;
+          case 'pt':
+            return num * 0.352778;
           case 'px':
           case '':
-            // ピクセルまたは単位なし（1px = 0.75pt）
-            return num * 0.75;
+            // ピクセルまたは単位なし（96dpiと仮定）
+            return num * 0.264583;
           default:
             // その他の単位はピクセルとして扱う
-            return num * 0.75;
+            return num * 0.264583;
         }
       }
       
-      // 寸法を解析
-      width = parseUnitValue(widthStr);
-      height = parseUnitValue(heightStr);
+      // 寸法を解析（mm単位で取得）
+      let widthMM = parseToMM(widthStr);
+      let heightMM = parseToMM(heightStr);
+      
+      console.log('解析後のサイズ(mm):', { widthMM, heightMM });
       
       // viewBoxから寸法を取得（width/heightが設定されていない場合）
-      if (!width || !height) {
+      if (!widthMM || !heightMM) {
         const viewBox = svgElement.getAttribute('viewBox');
         if (viewBox) {
           const [, , vbWidth, vbHeight] = viewBox.split(' ').map(parseFloat);
-          width = width || (vbWidth * 0.75);  // viewBoxの値はピクセルとして扱う
-          height = height || (vbHeight * 0.75);
+          widthMM = widthMM || (vbWidth * 0.264583);  // viewBoxの値はピクセルとして扱う
+          heightMM = heightMM || (vbHeight * 0.264583);
         }
       }
       
       // デフォルトサイズ（寸法が取得できない場合）
-      width = width || 595;  // A4幅（ポイント）
-      height = height || 842; // A4高さ（ポイント）
+      widthMM = widthMM || 210;  // A4幅（mm）
+      heightMM = heightMM || 297; // A4高さ（mm）
       
-      // jsPDFのインスタンスを作成（単位はpt）
+      console.log('最終的なPDFサイズ(mm):', { widthMM, heightMM });
+      
+      // jsPDFのインスタンスを作成（単位はmm）
       const { jsPDF } = window.jspdf;
       const pdf = new jsPDF({
-        orientation: width > height ? 'landscape' : 'portrait',
-        unit: 'pt',
-        format: [width, height]
+        orientation: widthMM > heightMM ? 'landscape' : 'portrait',
+        unit: 'mm',
+        format: [widthMM, heightMM]
       });
       
       // 変換中の表示
       downloadButton.disabled = true;
       downloadButton.textContent = '変換中...';
       
-      // SVGをPDFに変換
+      // SVGをPDFに変換（mm単位で指定）
       pdf.svg(svgElement, {
         x: 0,
         y: 0,
-        width: width,
-        height: height
+        width: widthMM,
+        height: heightMM
       })
       .then(() => {
         // PDFをダウンロード

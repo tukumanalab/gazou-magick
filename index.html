@@ -94,6 +94,10 @@
         <input type="checkbox" id="svgToPdf" disabled>
         SVG→PDF
       </label>
+      <label style="margin-left: 1rem;">
+        <input type="checkbox" id="scratchSvgWithSize" disabled>
+        Scratch SVG→サイズ付きSVG
+      </label>
     </div>
   </div>
   <div id="output">
@@ -112,6 +116,7 @@
     const invertColorsCheckbox = document.getElementById('invertColors');
     const flipHorizontalCheckbox = document.getElementById('flipHorizontal');
     const svgToPdfCheckbox = document.getElementById('svgToPdf');
+    const scratchSvgWithSizeCheckbox = document.getElementById('scratchSvgWithSize');
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
     
@@ -200,17 +205,20 @@
         invertColorsCheckbox.checked = false;
         flipHorizontalCheckbox.checked = false;
         svgToPdfCheckbox.checked = false;
-        
+        scratchSvgWithSizeCheckbox.checked = false;
+
         removeBackgroundCheckbox.disabled = true;
         invertColorsCheckbox.disabled = true;
         flipHorizontalCheckbox.disabled = true;
         svgToPdfCheckbox.disabled = true;
+        scratchSvgWithSizeCheckbox.disabled = true;
 
         // SVGファイルの場合
         if (file.type === 'image/svg+xml') {
           // SVG用のオプションだけを有効化
           svgToPdfCheckbox.disabled = false;
-          
+          scratchSvgWithSizeCheckbox.disabled = false;
+
           // PNG用のオプショングループを非表示
           document.getElementById('pngOptionsGroup').style.opacity = '0.5';
           document.getElementById('svgOptionsGroup').style.opacity = '1';
@@ -269,21 +277,24 @@
     // ダウンロードファイル名を表示する関数とボタンの有効/無効を切り替える
     function updateDownloadStatus() {
       // チェックボックスの状態を確認
-      const isAnyOptionChecked = 
-        removeBackgroundCheckbox.checked || 
-        invertColorsCheckbox.checked || 
-        flipHorizontalCheckbox.checked || 
-        svgToPdfCheckbox.checked;
-      
+      const isAnyOptionChecked =
+        removeBackgroundCheckbox.checked ||
+        invertColorsCheckbox.checked ||
+        flipHorizontalCheckbox.checked ||
+        svgToPdfCheckbox.checked ||
+        scratchSvgWithSizeCheckbox.checked;
+
       // ファイルがアップロードされていて、かつチェックボックスが選択されている場合のみボタンを有効化
       const enableDownload = image.src && isAnyOptionChecked;
       downloadButton.disabled = !enableDownload;
-      
+
       // ファイル名の表示を更新 (ボタンが有効な場合のみ表示)
       if (!enableDownload) {
         downloadFileName.textContent = '';
       } else if (svgToPdfCheckbox.checked && svgContent) {
         downloadFileName.textContent = `${filename}.pdf`;
+      } else if (scratchSvgWithSizeCheckbox.checked && svgContent) {
+        downloadFileName.textContent = `${filename}-with-size.svg`;
       } else if (image.src) {
         const suffix = getProcessingSuffix();
         downloadFileName.textContent = `${filename}${suffix}.png`;
@@ -309,11 +320,18 @@
       processImage();
       updateDownloadStatus();
     });
+    scratchSvgWithSizeCheckbox.addEventListener('change', () => {
+      processImage();
+      updateDownloadStatus();
+    });
 
     downloadButton.addEventListener('click', () => {
       if (svgToPdfCheckbox.checked && svgContent) {
         // SVGからPDFに変換してダウンロード
         convertSvgToPdf();
+      } else if (scratchSvgWithSizeCheckbox.checked && svgContent) {
+        // Scratch SVGにサイズを追加してダウンロード
+        convertScratchSvgWithSize();
       } else {
         // 通常の画像処理後のダウンロード
         const link = document.createElement('a');
@@ -324,60 +342,60 @@
       }
     });
 
+    // 単位を解析して適切にミリメートルに変換する関数（共通関数）
+    function parseToMM(value) {
+      if (!value) return 0;
+
+      // 数値と単位を分離
+      const match = value.match(/^([\d.]+)(\w*)$/);
+      if (!match) return 0;
+
+      const num = parseFloat(match[1]);
+      const unit = match[2];
+
+      // 単位に応じてmmに変換
+      switch (unit) {
+        case 'mm':
+          return num;
+        case 'cm':
+          return num * 10;
+        case 'in':
+          return num * 25.4;
+        case 'pt':
+          return num * 0.352778;
+        case 'px':
+        case '':
+          // ピクセルまたは単位なし（96dpiと仮定）
+          return num * 0.264583;
+        default:
+          // その他の単位はピクセルとして扱う
+          return num * 0.264583;
+      }
+    }
+
     // SVGをPDFに変換する関数
     function convertSvgToPdf() {
       // SVG文字列からDOMを作成
       const parser = new DOMParser();
       const svgDoc = parser.parseFromString(svgContent, 'image/svg+xml');
       const svgElement = svgDoc.documentElement;
-      
+
       // SVGの寸法を取得（単位付きの文字列として）
       let widthStr = svgElement.getAttribute('width') || '';
       let heightStr = svgElement.getAttribute('height') || '';
       let width = 0;
       let height = 0;
-      
+
       // デバッグログ
       console.log('SVG width属性:', widthStr);
       console.log('SVG height属性:', heightStr);
-      
-      // 単位を解析して適切にミリメートルに変換する関数
-      function parseToMM(value) {
-        if (!value) return 0;
-        
-        // 数値と単位を分離
-        const match = value.match(/^([\d.]+)(\w*)$/);
-        if (!match) return 0;
-        
-        const num = parseFloat(match[1]);
-        const unit = match[2];
-        
-        // 単位に応じてmmに変換
-        switch (unit) {
-          case 'mm':
-            return num;
-          case 'cm':
-            return num * 10;
-          case 'in':
-            return num * 25.4;
-          case 'pt':
-            return num * 0.352778;
-          case 'px':
-          case '':
-            // ピクセルまたは単位なし（96dpiと仮定）
-            return num * 0.264583;s
-          default:
-            // その他の単位はピクセルとして扱う
-            return num * 0.264583;
-        }
-      }
-      
+
       // 寸法を解析（mm単位で取得）
       let widthMM = parseToMM(widthStr);
       let heightMM = parseToMM(heightStr);
-      
+
       console.log('解析後のサイズ(mm):', { widthMM, heightMM });
-      
+
       // viewBoxから寸法を取得（width/heightが設定されていない場合）
       if (!widthMM || !heightMM) {
         const viewBox = svgElement.getAttribute('viewBox');
@@ -387,13 +405,13 @@
           heightMM = heightMM || (vbHeight * 0.264583);
         }
       }
-      
+
       // デフォルトサイズ（寸法が取得できない場合）
       widthMM = widthMM || 210;  // A4幅（mm）
       heightMM = heightMM || 297; // A4高さ（mm）
-      
+
       console.log('最終的なPDFサイズ(mm):', { widthMM, heightMM });
-      
+
       // jsPDFのインスタンスを作成（単位はmm）
       const { jsPDF } = window.jspdf;
       const pdf = new jsPDF({
@@ -401,11 +419,11 @@
         unit: 'mm',
         format: [widthMM, heightMM]
       });
-      
+
       // 変換中の表示
       downloadButton.disabled = true;
       downloadButton.textContent = '変換中...';
-      
+
       // SVGをPDFに変換（mm単位で指定）
       pdf.svg(svgElement, {
         x: 0,
@@ -416,7 +434,7 @@
       .then(() => {
         // PDFをダウンロード
         pdf.save(`${filename}.pdf`);
-        
+
         // ボタンを元に戻す
         downloadButton.disabled = false;
         downloadButton.textContent = 'ダウンロード';
@@ -424,11 +442,71 @@
       .catch(err => {
         console.error('SVGからPDFへの変換エラー:', err);
         alert('SVGからPDFへの変換中にエラーが発生しました。');
-        
+
         // ボタンを元に戻す
         downloadButton.disabled = false;
         downloadButton.textContent = 'ダウンロード';
       });
+    }
+
+    // Scratch SVGにmm単位のサイズを追加する関数
+    function convertScratchSvgWithSize() {
+      try {
+        // SVG文字列からDOMを作成
+        const parser = new DOMParser();
+        const svgDoc = parser.parseFromString(svgContent, 'image/svg+xml');
+        const svgElement = svgDoc.documentElement;
+
+        // SVGの寸法を取得（単位付きの文字列として）
+        let widthStr = svgElement.getAttribute('width') || '';
+        let heightStr = svgElement.getAttribute('height') || '';
+
+        // デバッグログ
+        console.log('Scratch SVG width属性:', widthStr);
+        console.log('Scratch SVG height属性:', heightStr);
+
+        // 寸法を解析（mm単位で取得）
+        let widthMM = parseToMM(widthStr);
+        let heightMM = parseToMM(heightStr);
+
+        // viewBoxから寸法を取得（width/heightが設定されていない場合）
+        if (!widthMM || !heightMM) {
+          const viewBox = svgElement.getAttribute('viewBox');
+          if (viewBox) {
+            const [, , vbWidth, vbHeight] = viewBox.split(' ').map(parseFloat);
+            widthMM = widthMM || (vbWidth * 0.264583);  // viewBoxの値はピクセルとして扱う
+            heightMM = heightMM || (vbHeight * 0.264583);
+          }
+        }
+
+        // サイズが取得できない場合はエラー
+        if (!widthMM || !heightMM) {
+          alert('SVGからサイズ情報を取得できませんでした。');
+          return;
+        }
+
+        console.log('変換後のサイズ(mm):', { widthMM, heightMM });
+
+        // width/height属性をmm単位で設定
+        svgElement.setAttribute('width', `${widthMM.toFixed(2)}mm`);
+        svgElement.setAttribute('height', `${heightMM.toFixed(2)}mm`);
+
+        // 新しいSVG文字列を生成
+        const serializer = new XMLSerializer();
+        const newSvgContent = serializer.serializeToString(svgElement);
+
+        // ダウンロード
+        const blob = new Blob([newSvgContent], { type: 'image/svg+xml' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.download = `${filename}-with-size.svg`;
+        link.href = url;
+        link.click();
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        console.error('Scratch SVG変換エラー:', err);
+        alert('Scratch SVGの変換中にエラーが発生しました。');
+      }
     }
   </script>
 </body>
